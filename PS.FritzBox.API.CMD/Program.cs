@@ -41,7 +41,23 @@ namespace PS.FritzBox.API.CMD
                 } while (!Int32.TryParse(input, out deviceIndex) && (deviceIndex < 0 || deviceIndex >= devices.Count()));
 
                 FritzDevice selected = devices.Skip(deviceIndex).First();
-                Configure(selected);
+
+                // RoSchmi
+                //InitClientHandler(selected);
+
+                Action clearOutput = () => Console.Clear();
+                Action wait = () => Console.ReadKey();
+                Action<string> printOutput = (output) => Console.WriteLine(output);
+                Func<string> getInput = () => Console.ReadLine();
+                LanConfigSecurityGetUserListHandler lanConfigSecurityGetUserListHandler = new LanConfigSecurityGetUserListHandler(selected, printOutput, getInput, wait, clearOutput);
+
+                await lanConfigSecurityGetUserListHandler.Handle();
+
+                string UserListString = lanConfigSecurityGetUserListHandler.UserList;
+               
+                List<string> UserList = GetProcessedUserList(UserListString);
+
+                Configure(selected, UserList.First<string>());
 
                 do
                 {
@@ -72,7 +88,7 @@ namespace PS.FritzBox.API.CMD
                     if (_clientHandlers.ContainsKey(input))
                         await _clientHandlers[input].Handle();
                     else if (input.ToLower() == "r")
-                        Configure(selected);
+                        Configure(selected, UserList.First<string>());
                     else if (input.ToLower() != "q")
                         Console.WriteLine("invalid choice");
 
@@ -85,9 +101,37 @@ namespace PS.FritzBox.API.CMD
             }
         }
 
-        static void Configure(FritzDevice device)
+        /// <summary>
+        /// Method to extract users out of userList, last user is on top
+        /// </summary>
+        /// <param name="userList"></param>
+        
+        static List<string> GetProcessedUserList(string userList)
         {
-            ConnectionSettings settings = GetConnectionSettings();
+            string[] separator = new string[] { "<List>", "</Username>" };
+            string[] firstArray = userList.Split(separator, StringSplitOptions.RemoveEmptyEntries);
+
+            List<string> processedList = new List<string>();
+            foreach (string item in firstArray)
+            {
+                if (item[item.IndexOf(">") - 2] == '1')
+                {
+                    processedList.Add(item.Substring(item.IndexOf(">") + 1));
+                }
+            }
+            foreach (string item in firstArray)
+            {
+                if (item[item.IndexOf(">") - 2] == '0')
+                {
+                    processedList.Add(item.Substring(item.IndexOf(">") + 1));
+                }
+            }
+            return processedList;
+        }
+
+        static void Configure(FritzDevice device, string userPreset)
+        {
+            ConnectionSettings settings = GetConnectionSettings(userPreset);
             device.Credentials = new System.Net.NetworkCredential(settings.UserName, settings.Password);
             //device.GetServiceClient<DeviceInfoClient>(settings);
             InitClientHandler(device);
@@ -97,11 +141,13 @@ namespace PS.FritzBox.API.CMD
         /// Method to get the connections ettings
         /// </summary>
         /// <returns>the connection settings</returns>
-        static ConnectionSettings GetConnectionSettings()
+        static ConnectionSettings GetConnectionSettings(string userPreset)
         {
             ConnectionSettings settings = new ConnectionSettings();
-            Console.Write("User: ");
-            settings.UserName = Console.ReadLine();
+            Console.WriteLine("Last user (preset) was: " + userPreset);
+            Console.Write("User: ");          
+            string readStr = Console.ReadLine();
+            settings.UserName = string.IsNullOrEmpty(readStr) ? userPreset : readStr;         
             Console.Write("Password: ");
             settings.Password = Console.ReadLine();
 
@@ -138,8 +184,6 @@ namespace PS.FritzBox.API.CMD
             _clientHandlers.Add("16", new WANEthernetLinkConfigClientHandler(device, printOutput, getInput, wait, clearOutput));
             _clientHandlers.Add("17", new WANDSLLinkConfigClientHandler(device, printOutput, getInput, wait, clearOutput));
             _clientHandlers.Add("18", new SpeedtestClientHandler(device, printOutput, getInput, wait, clearOutput));
-        }
-
-        
+        }   
     }
 }

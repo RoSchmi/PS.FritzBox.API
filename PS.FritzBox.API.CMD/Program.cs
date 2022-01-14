@@ -1,4 +1,8 @@
-﻿using PS.FritzBox.API;
+﻿// This modification of the original application retreives the userlist from the Fritzbox
+// and sets th last user as preset
+
+
+using PS.FritzBox.API;
 using PS.FritzBox.API.Base;
 using System;
 using System.Collections.Generic;
@@ -43,8 +47,6 @@ namespace PS.FritzBox.API.CMD
                 FritzDevice selected = devices.Skip(deviceIndex).First();
 
                 // RoSchmi
-                //InitClientHandler(selected);
-
                 Action clearOutput = () => Console.Clear();
                 Action wait = () => Console.ReadKey();
                 Action<string> printOutput = (output) => Console.WriteLine(output);
@@ -58,7 +60,6 @@ namespace PS.FritzBox.API.CMD
                 List<string> UserList = GetProcessedUserList(UserListString);
 
                 Configure(selected, UserList.First<string>());
-
                 do
                 {
                     Console.Clear();
@@ -144,7 +145,7 @@ namespace PS.FritzBox.API.CMD
         static ConnectionSettings GetConnectionSettings(string userPreset)
         {
             ConnectionSettings settings = new ConnectionSettings();
-            Console.WriteLine("Last user (preset) was: " + userPreset);
+            Console.WriteLine("Last user (type (CR) to take over) was: " + userPreset);
             Console.Write("User: ");          
             string readStr = Console.ReadLine();
             settings.UserName = string.IsNullOrEmpty(readStr) ? userPreset : readStr;         

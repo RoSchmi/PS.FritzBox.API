@@ -36,7 +36,7 @@ namespace PS.FritzBox.API.CMD
 
         private async Task GetUserList()
         {
-            this.ClearOutputAction();
+            //this.ClearOutputAction();
             //this.PrintEntry();
             _userList = await this._client.GetUserListAsync();
             UserList = _userList.UserList;
